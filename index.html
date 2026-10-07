@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TECH VIPERS Robotics Hub</title>
+<meta name="description" content="TECH VIPERS robotics operations hub with Google Drive media uploads, expense splits, automated personal due emails, competition tracking, and club asset management." />
+<meta property="og:title" content="TECH VIPERS Robotics Hub" />
+<meta property="og:description" content="TECH VIPERS robotics operations hub with Google Drive media uploads, expense splits, automated personal due emails, competition tracking, and club asset management." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body class="noise stripe-bg">
+<div class="grid-bg"></div>
+<div id="toastContainer"></div>
+
+<!-- Lightbox Modal -->
+<div class="overlay" id="lightboxModal" onclick="closeLightbox(event)">
+  <div style="max-width:90vw;max-height:90vh;position:relative;display:flex;flex-direction:column;align-items:center;">
+    <button class="modal-close" style="position:absolute;top:-40px;right:0;color:#fff;" onclick="closeModal('lightboxModal')">✕</button>
+    <img id="lightboxImg" src="" style="max-width:100%;max-height:80vh;border:1px solid var(--line);box-shadow:0 10px 40px rgba(0,0,0,0.3);" class="clip-a">
+    <div id="lightboxCaption" style="margin-top:10px;color:#fff;font-family:var(--head);font-size:16px;"></div>
+  </div>
+</div>
+
+<!-- AUTH SCREEN (Prompt Tadka Style) -->
+<div id="authScreen">
+  <div class="auth-box clip-lg">
+    <div class="auth-logo-wrap">
+      <img src="https://drive.google.com/thumbnail?id=1yH9Lm-vHDQYDMRXDm21m0ucr3BkPbOuK" alt="TECH VIPERS" class="auth-logo-img">
+      <div class="auth-tagline">ROBOTICS OPERATIONS HUB</div>
+    </div>
+    
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Log In</div>
+      <div class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Sign Up</div>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="loginForm">
+      <div class="field">
+        <label>Email, Phone, or Member ID</label>
+        <input type="text" id="loginIdentifier" placeholder="Email, Phone, or Member ID (e.g. 1001)" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="field">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <label style="margin-bottom:0;">Password</label>
+          <button type="button" onclick="switchAuthTab('forgot')" style="font-size:11px;color:#0077fe;background:none;border:none;cursor:pointer;font-weight:600;padding:0;text-decoration:none;">Forgot Password?</button>
+        </div>
+        <div style="position:relative;margin-top:4px;">
+          <input type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--ink3);" onclick="togglePwVisibility('loginPassword',this)">👁</span>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full shimmer-btn clip-a" id="loginBtn" onclick="doLogin()" style="margin-top:10px;">LOG IN</button>
+      <p style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:16px;">
+        No account? <button type="button" onclick="switchAuthTab('register')" style="font-weight:700;color:var(--cr);background:none;border:none;cursor:pointer;">Sign up free</button>
+      </p>
+    </div>
+
+    <!-- FORGOT PASSWORD FORM -->
+    <div id="forgotForm" style="display:none">
+      <div id="forgotStep1">
+        <p style="font-size:12px;color:var(--ink2);margin-bottom:14px;line-height:1.5;">
+          Enter your registered Email, Phone, or Member ID. We will send a 6-digit OTP to your email to verify and set a new password.
+        </p>
+        <div class="field">
+          <label>Email, Phone, or Member ID</label>
+          <input type="text" id="forgotIdentifier" placeholder="Email, Phone, or Member ID (e.g. 1001)" onkeydown="if(event.key==='Enter')sendResetOTP()">
+        </div>
+        <button class="btn btn-primary btn-full shimmer-btn clip-a" id="sendOtpBtn" onclick="sendResetOTP()" style="margin-top:10px;">SEND VERIFICATION OTP</button>
+      </div>
+
+      <div id="forgotStep2" style="display:none">
+        <div style="background:rgba(0,119,254,0.06);border:1px solid rgba(0,119,254,0.2);padding:10px 12px;border-radius:6px;margin-bottom:14px;">
+          <span style="font-size:11.5px;color:var(--ink2);">OTP sent to: <strong id="forgotMaskedEmail" style="color:#0077fe;">...</strong></span>
+        </div>
+        <div class="field">
+          <label>6-Digit Verification OTP *</label>
+          <input type="text" id="forgotOtp" placeholder="123456" maxlength="6" style="letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
+        </div>
+        <div class="field">
+          <label>New Password *</label>
+          <div style="position:relative;">
+            <input type="password" id="forgotNewPassword" placeholder="Min 6 characters">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--ink3);" onclick="togglePwVisibility('forgotNewPassword',this)">👁</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Confirm New Password *</label>
+          <div style="position:relative;">
+            <input type="password" id="forgotConfirmPassword" placeholder="Re-enter new password" onkeydown="if(event.key==='Enter')submitPasswordReset()">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--ink3);" onclick="togglePwVisibility('forgotConfirmPassword',this)">👁</span>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full shimmer-btn clip-a" id="resetPasswordBtn" onclick="submitPasswordReset()" style="margin-top:10px;">RESET PASSWORD & LOG IN</button>
+        <div style="text-align:center;margin-top:10px;">
+          <button type="button" onclick="sendResetOTP()" style="font-size:11px;color:#0077fe;background:none;border:none;cursor:pointer;font-weight:600;">Resend OTP</button>
+        </div>
+      </div>
+
+      <p style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:16px;">
+        Remembered your password? <button type="button" onclick="switchAuthTab('login')" style="font-weight:700;color:var(--cr);background:none;border:none;cursor:pointer;">Back to Log in</button>
+      </p>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="registerForm" style="display:none">
+      <div class="field">
+        <label>Full Name *</label>
+        <input type="text" id="regName" placeholder="Arjun Sharma">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Email *</label>
+          <input type="email" id="regEmail" placeholder="arjun@techvipers.com">
+        </div>
+        <div class="field">
+          <label>Phone *</label>
+          <input type="tel" id="regPhone" placeholder="9876543210">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Password *</label>
+          <div style="position:relative;">
+            <input type="password" id="regPassword" placeholder="Min 8 characters" oninput="checkRegPwStrength(this.value)">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--ink3);" onclick="togglePwVisibility('regPassword',this)">👁</span>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:6px;">
+            <div id="pw-seg-1" style="height:3px;flex:1;background:var(--line);border-radius:2px;"></div>
+            <div id="pw-seg-2" style="height:3px;flex:1;background:var(--line);border-radius:2px;"></div>
+            <div id="pw-seg-3" style="height:3px;flex:1;background:var(--line);border-radius:2px;"></div>
+            <div id="pw-seg-4" style="height:3px;flex:1;background:var(--line);border-radius:2px;"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>UPI ID *</label>
+          <input type="text" id="regUPI" placeholder="arjun@upi">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full shimmer-btn clip-a" id="registerBtn" onclick="doRegister()" style="margin-top:10px;">CREATE ACCOUNT</button>
+      <p style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:16px;">
+        Already have an account? <button type="button" onclick="switchAuthTab('login')" style="font-weight:700;color:var(--cr);background:none;border:none;cursor:pointer;">Log in</button>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- TOPBAR (Strictly with Logo Image, No Text or Snake Emoji) -->
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileNav()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <img src="https://drive.google.com/thumbnail?id=1yH9Lm-vHDQYDMRXDm21m0ucr3BkPbOuK" alt="TECH VIPERS" class="topbar-logo-img">
+    </div>
+    <div class="topbar-right">
+      <!-- Profile Wrapper with Popup Container (Click to view Name, ID & Logout) -->
+      <div class="profile-dropdown-wrapper" id="profileDropdownWrapper">
+        <div class="user-profile-badge" id="topbarProfileBadge" onclick="toggleProfileDropdown(event)" title="Profile & Account">
+          <div class="user-badge-avatar" id="topbarAvatar">TV</div>
+          <div class="user-badge-info">
+            <span id="topbarName" class="user-name-label">Member</span>
+            <span class="user-badge-role" id="topbarRole">VERIFIED</span>
+          </div>
+          <div class="user-status-dot" title="Active Member"></div>
+        </div>
+
+        <!-- Small Dropdown Container with Name, ID, and Logout Button -->
+        <div class="profile-dropdown-menu" id="profileDropdownMenu">
+          <div class="profile-dropdown-user">
+            <div class="profile-dropdown-avatar" id="dropdownAvatar">TV</div>
+            <div class="profile-dropdown-details">
+              <div class="profile-dropdown-name" id="dropdownUserName">Member</div>
+              <div class="profile-dropdown-id" id="dropdownMemberID">ID: #1</div>
+            </div>
+          </div>
+          <div class="profile-dropdown-divider"></div>
+          <button class="profile-dropdown-logout-btn" onclick="doLogout(); closeProfileDropdown()" title="Logout">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Backdrop & Slide-in Menu (Exact same UI as laptop sidebar) -->
+  <div id="mob-bd" onclick="closeMobileNav()"></div>
+  <div class="mobile-menu-overlay" id="mobileMenuOverlay">
+    <div class="mob-menu-header">
+      <img src="https://drive.google.com/thumbnail?id=1yH9Lm-vHDQYDMRXDm21m0ucr3BkPbOuK" alt="TECH VIPERS" class="mob-menu-logo" style="height:34px;max-height:36px;width:auto;object-fit:contain;display:block;">
+      <button class="mob-menu-close" onclick="closeMobileNav()" aria-label="Close menu">✕</button>
+    </div>
+
+    <!-- Mobile Navigation Menu: Exact Same UI as Laptop Sidebar -->
+    <div class="sidebar-nav">
+      <div class="nav-item active" id="mnav-dashboard" onclick="showSection('dashboard');closeMobileNav()"><span class="nav-icon">🏠</span> Dashboard</div>
+      <div class="nav-item" id="mnav-expenses" onclick="showSection('expenses');closeMobileNav()"><span class="nav-icon">💰</span> Expenses & Splits</div>
+      <div class="nav-item" id="mnav-transactions" onclick="showSection('transactions');closeMobileNav()"><span class="nav-icon">📋</span> My Transactions & Dues</div>
+      <div class="nav-item" id="mnav-media" onclick="showSection('media');closeMobileNav()"><span class="nav-icon">📸</span> Team Media</div>
+      <div class="nav-item" id="mnav-events" onclick="showSection('events');closeMobileNav()"><span class="nav-icon">🏆</span> Competitions</div>
+      <div class="nav-item" id="mnav-assets" onclick="showSection('assets');closeMobileNav()"><span class="nav-icon">🔧</span> Club Assets</div>
+    </div>
+
+    <!-- User Profile & Full Width Logout: Exact Same UI as Laptop Sidebar -->
+    <div class="sidebar-user">
+      <div class="sidebar-user-info">
+        <div class="sidebar-avatar" id="mobUserAvatar">TV</div>
+        <div class="sidebar-user-details">
+          <div class="sidebar-user-name" id="mobUserName">Member</div>
+          <div class="sidebar-user-id" id="mobUserID">ID: #1</div>
+        </div>
+      </div>
+      <button class="btn-logout" style="width:100%;" onclick="doLogout();closeMobileNav()" title="Logout">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        <span>Logout</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- SIDEBAR (DESKTOP) -->
+    <div class="sidebar">
+      <div class="sidebar-nav">
+        <div class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard')"><span class="nav-icon">🏠</span> Dashboard</div>
+        <div class="nav-item" id="nav-expenses" onclick="showSection('expenses')"><span class="nav-icon">💰</span> Expenses & Splits</div>
+        <div class="nav-item" id="nav-transactions" onclick="showSection('transactions')"><span class="nav-icon">📋</span> My Transactions & Dues</div>
+        <div class="nav-item" id="nav-media" onclick="showSection('media')"><span class="nav-icon">📸</span> Team Media</div>
+        <div class="nav-item" id="nav-events" onclick="showSection('events')"><span class="nav-icon">🏆</span> Competitions</div>
+        <div class="nav-item" id="nav-assets" onclick="showSection('assets')"><span class="nav-icon">🔧</span> Club Assets</div>
+      </div>
+      <div class="sidebar-user">
+        <div class="sidebar-user-info">
+          <div class="sidebar-avatar" id="sidebarAvatar">TV</div>
+          <div class="sidebar-user-details">
+            <div class="sidebar-user-name" id="sidebarUserName">Member</div>
+            <div class="sidebar-user-id" id="sidebarMemberID">ID: #1</div>
+          </div>
+        </div>
+        <button class="btn-logout" style="width:100%;" onclick="doLogout()" title="Logout">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          <span>Logout</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <!-- DASHBOARD -->
+      <div class="section active" id="section-dashboard">
+        <!-- Welcome Banner with Dynamic Greeting, Animated Hello Icon, and Personalized Wish -->
+        <div class="welcome-banner clip-a">
+          <div class="welcome-main">
+            <div class="welcome-top-row" style="display:flex;align-items:center;justify-content:space-between;width:100%;flex-wrap:wrap;gap:8px;">
+              <div class="welcome-time-tag" id="welcomeTimeTag">🌅 MORNING LAB SPRINT</div>
+              <button class="btn btn-sm btn-secondary shimmer-btn clip-sm" onclick="loadDashboardStats(true); toast('Refreshing dashboard telemetry...', 'info')" title="Force refresh telemetry from Google Sheet" style="padding:4px 10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;">
+                <span>🔄</span> <span>Sync Telemetry</span>
+              </button>
+            </div>
+            <h2 class="welcome-heading">
+              <span id="welcomeGreeting">Good morning</span>, <span id="dashName" class="hero-shine">Member</span> <span class="waving-hand" title="Hello!">👋</span>
+            </h2>
+            <p class="welcome-sub" id="welcomeSub">
+              Wishing you an energized and productive robotics day! Review active expense splits, clear dues via UPI, upload robot media, and track hardware inventory.
+            </p>
+          </div>
+        </div>
+
+        <!-- Pending Dues Alert (Single Row on Laptop & Tablet) -->
+        <div id="dueNoticeCard" class="card clip-a due-notice-card" style="display:none;">
+          <div class="due-notice-content">
+            <div class="due-notice-left">
+              <span class="due-notice-icon">⚠️</span>
+              <div class="due-notice-text">
+                <strong class="pending-dues-heading">Pending Expense Splits Due:</strong>
+                <span class="due-notice-sub">You have unpaid team expense shares. Please clear them via UPI and submit proof with UTR.</span>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-danger clip-sm due-notice-btn" onclick="showSection('transactions')">View My Dues →</button>
+          </div>
+        </div>
+
+        <!-- Stat Grid (Clean Cut Corners & Theme-Matched Numbers) -->
+        <div class="stat-grid">
+          <div class="stat-card clip-a">
+            <div class="stat-val" id="statExpensesAmount">₹ 0.00</div>
+            <div class="stat-lbl">TEAM EXPENSES (<span id="statExpensesCount">0</span>)</div>
+          </div>
+          <div class="stat-card clip-a">
+            <div class="stat-val stat-val-due" id="statPendingAmount" style="color:#ef4444 !important;-webkit-text-fill-color:#ef4444 !important;">₹ 0.00</div>
+            <div class="stat-lbl">MY PENDING DUES (<span id="statPendingCount">0</span>)</div>
+          </div>
+          <div class="stat-card clip-a">
+            <div class="stat-val stat-val-paid" id="statPaidAmount" style="color:#10b981 !important;-webkit-text-fill-color:#10b981 !important;">₹ 0.00</div>
+            <div class="stat-lbl">MY PAID AMOUNT</div>
+          </div>
+          <div class="stat-card clip-a">
+            <div class="stat-val" id="statMedia">0</div>
+            <div class="stat-lbl">TEAM MEDIA</div>
+          </div>
+        </div>
+
+        <!-- Quick Actions (6 Actions, 50% 50% on mobile with increased height) -->
+        <div class="card clip-a" style="margin-top:24px;">
+          <div class="card-top-bar"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3 style="font-family:var(--head);font-size:19px;font-weight:800;color:var(--ink);text-transform:uppercase;display:flex;align-items:center;gap:8px;">
+              <span>⚡</span> Quick Actions
+            </h3>
+            <span class="badge badge-blue">HUD Shortcuts</span>
+          </div>
+          <div class="quick-actions-grid">
+            <button class="quick-action-btn clip-a" onclick="openModal('addExpenseModal')">
+              <span class="qa-icon clip-sm">💰</span>
+              <div class="qa-text">
+                <span class="qa-title">+ Add Expense</span>
+                <span class="qa-desc">Record & split new team spend</span>
+              </div>
+            </button>
+            <button class="quick-action-btn clip-a" onclick="showSection('transactions')">
+              <span class="qa-icon clip-sm">📋</span>
+              <div class="qa-text">
+                <span class="qa-title">My Pending Dues</span>
+                <span class="qa-desc">Check & clear unpaid split shares</span>
+              </div>
+            </button>
+            <button class="quick-action-btn clip-a" onclick="openModal('addMediaModal')">
+              <span class="qa-icon clip-sm">📸</span>
+              <div class="qa-text">
+                <span class="qa-title">Upload Media</span>
+                <span class="qa-desc">Save robot build photos to Drive</span>
+              </div>
+            </button>
+            <button class="quick-action-btn clip-a" onclick="openAddEventModal()">
+              <span class="qa-icon clip-sm">🏆</span>
+              <div class="qa-text">
+                <span class="qa-title">Add Competition</span>
+                <span class="qa-desc">Schedule upcoming robotics battles</span>
+              </div>
+            </button>
+            <button class="quick-action-btn clip-a" onclick="openAddAssetModal()">
+              <span class="qa-icon clip-sm">🔧</span>
+              <div class="qa-text">
+                <span class="qa-title">Issue Club Asset</span>
+                <span class="qa-desc">Track tools, controllers & hardware</span>
+              </div>
+            </button>
+            <button class="quick-action-btn clip-a" onclick="showSection('assets')">
+              <span class="qa-icon clip-sm">📦</span>
+              <div class="qa-text">
+                <span class="qa-title">Club Assets Hub</span>
+                <span class="qa-desc">View tools & active checkouts</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXPENSES & SPLITS -->
+      <div class="section" id="section-expenses">
+        <div class="section-header">
+          <h2 class="section-title">💰 Team <span>Expenses & Splits</span></h2>
+          <button class="btn btn-primary shimmer-btn clip-sm" onclick="openModal('addExpenseModal')">+ Add Expense</button>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs-bar">
+          <button class="filter-tab active" id="tab-exp-all" onclick="filterExpenses('all')">
+            <span>All Expenses</span>
+            <span class="filter-tab-count" id="expCountAll">0</span>
+          </button>
+          <button class="filter-tab" id="tab-exp-pending" onclick="filterExpenses('pending')">
+            <span>Pending Splits</span>
+            <span class="filter-tab-count" id="expCountPending">0</span>
+          </button>
+          <button class="filter-tab" id="tab-exp-settled" onclick="filterExpenses('settled')">
+            <span>Settled</span>
+            <span class="filter-tab-count" id="expCountSettled">0</span>
+          </button>
+        </div>
+
+        <!-- Desktop Table View -->
+        <div class="desktop-table-view">
+          <div class="table-wrap clip-a">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>DATE</th><th>ITEM</th><th>QTY</th>
+                  <th>UNIT ₹</th><th>TOTAL ₹</th><th>VENDOR</th>
+                  <th>SPLITS STATUS</th><th>BILL</th><th>SUBMITTED BY</th>
+                </tr>
+              </thead>
+              <tbody id="expensesTable">
+                <tr class="loading-row"><td colspan="10"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Mobile Card View (100% Width Responsive UX) -->
+        <div class="mobile-cards-view" id="expensesCardsMobile">
+          <div style="text-align:center;padding:30px;"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- TRANSACTIONS & DUES -->
+      <div class="section" id="section-transactions">
+        <div class="section-header" style="flex-wrap:wrap;gap:12px;">
+          <h2 class="section-title">📋 My <span>Transactions & Dues</span></h2>
+          <button class="btn btn-outline shimmer-btn clip-sm" id="downloadStatementBtn" onclick="downloadStatementPDF()" title="Download PDF Statement & Dues Summary" style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;padding:8px 16px;">
+            <span style="font-size:14px;">📄</span>
+            <span>Download Statement</span>
+          </button>
+        </div>
+
+        <!-- Payee Grouped Batch Payment Quick Actions -->
+        <div id="payeeBatchActions" class="payee-batch-container" style="display:none;"></div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs-bar filter-tabs-full">
+          <button class="filter-tab active" id="tab-tx-all" onclick="filterTransactions('all')">
+            <span>All</span>
+            <span class="filter-tab-count" id="txCountAll">0</span>
+          </button>
+          <button class="filter-tab" id="tab-tx-due" onclick="filterTransactions('due')">
+            <span>Due</span>
+            <span class="filter-tab-count" id="txCountDue">0</span>
+          </button>
+          <button class="filter-tab" id="tab-tx-paid" onclick="filterTransactions('paid')">
+            <span>Paid</span>
+            <span class="filter-tab-count" id="txCountPaid">0</span>
+          </button>
+        </div>
+
+        <!-- Desktop Table View -->
+        <div class="desktop-table-view">
+          <div class="table-wrap clip-a">
+            <table>
+              <thead>
+                <tr>
+                  <th>EXP ID</th><th>ITEM</th><th>YOUR SHARE ₹</th>
+                  <th>STATUS</th><th>PAYMENT TIMESTAMP</th><th>PAYEE UPI ID</th><th>PROOF</th><th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="transactionsTable">
+                <tr class="loading-row"><td colspan="8"><div class="tech-inline-loader"><div class="tech-loader-gyro"><div class="tech-ring-orbit spin-clockwise"></div><div class="tech-ring-orbit-middle spin-counter"></div><div class="tech-ring-orbit-inner spin-clockwise-slow"></div><div class="tech-core-hex"><span class="tech-core-glow"></span><span class="tech-core-symbol">⚡</span></div></div><div class="tech-loader-meta"><div class="tech-loader-headline">Synchronizing your transactions and dues...</div></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Mobile Card View (100% Width Responsive UX) -->
+        <div class="mobile-cards-view" id="transactionsCardsMobile">
+          <div style="text-align:center;padding:30px;"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- MEDIA -->
+      <div class="section" id="section-media">
+        <div class="section-header">
+          <h2 class="section-title">📸 Team <span>Media</span></h2>
+          <button class="btn btn-primary shimmer-btn clip-sm" onclick="openModal('addMediaModal')">+ New Upload</button>
+        </div>
+        <div class="media-controls-container">
+          <div class="media-search-row">
+            <input type="text" id="mediaSearch" placeholder="Search robot media descriptions..." oninput="filterMedia()">
+          </div>
+          <div class="media-actions-row">
+            <select id="mediaFilterType" class="media-select-input" onchange="filterMedia()">
+              <option value="">All Categories</option>
+              <option value="IMAGE">Photos / Images</option>
+              <option value="VIDEO">Videos</option>
+              <option value="DOCUMENT">Documents / PDFs</option>
+            </select>
+            <!-- 2 Layout Switcher: Grid (50/50% width) selected by default, and Normal/Single Card View -->
+            <div class="media-layout-switcher" id="mediaLayoutSwitcher">
+              <button type="button" class="layout-toggle-btn active" id="mediaLayoutGridBtn" onclick="setMediaViewLayout('grid')" title="50/50 Grid View (2 Columns)" aria-label="50/50 Grid View">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="8" height="18" rx="1.5"></rect>
+                  <rect x="13" y="3" width="8" height="18" rx="1.5"></rect>
+                </svg>
+              </button>
+              <button type="button" class="layout-toggle-btn" id="mediaLayoutNormalBtn" onclick="setMediaViewLayout('normal')" title="Normal / Single Card View (1 Column)" aria-label="Single Card View">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="mediaGrid" class="media-grid layout-grid-50"></div>
+      </div>
+
+      <!-- COMPETITIONS -->
+      <div class="section" id="section-events">
+        <div class="section-header">
+          <h2 class="section-title">🏆 Competition <span>Events</span></h2>
+          <button class="btn btn-primary shimmer-btn clip-sm" onclick="openAddEventModal()">+ Add Competition</button>
+        </div>
+        <div class="filter-bar">
+          <input type="text" id="eventSearch" placeholder="Search competitions, venues..." oninput="filterEvents()">
+          <select id="eventStatusFilter" onchange="filterEvents()">
+            <option value="">All Statuses</option>
+            <option>Registration Open</option>
+            <option>Registration Closed</option>
+            <option>Not Participating</option>
+            <option>Participated</option>
+          </select>
+        </div>
+        <div id="eventsGrid" class="event-grid"></div>
+      </div>
+
+      <!-- CLUB ASSETS & TOOLS -->
+      <div class="section" id="section-assets">
+        <div class="section-header">
+          <h2 class="section-title">🔧 Club <span>Assets & Tools</span></h2>
+          <button class="btn btn-primary shimmer-btn clip-sm" onclick="openAddAssetModal()">+ Add New Asset</button>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs-bar filter-tabs-equal">
+          <button class="filter-tab active" id="tab-asset-all" onclick="filterAssets('all')">
+            <span>All</span>
+            <span class="filter-tab-count" id="assetCountAll">0</span>
+          </button>
+          <button class="filter-tab" id="tab-asset-issued" onclick="filterAssets('issued')">
+            <span>Issued</span>
+            <span class="filter-tab-count" id="assetCountIssued">0</span>
+          </button>
+          <button class="filter-tab" id="tab-asset-returned" onclick="filterAssets('returned')">
+            <span>Returned</span>
+            <span class="filter-tab-count" id="assetCountReturned">0</span>
+          </button>
+        </div>
+
+        <!-- Desktop Table View -->
+        <div class="desktop-table-view">
+          <div class="table-wrap clip-a">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>PHOTO</th><th>NAME</th><th>QTY</th>
+                  <th>ISSUED TO</th><th>ISSUE DATE</th><th>RETURN DATE</th>
+                  <th>REMARKS</th><th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody id="assetsTable">
+                <tr class="loading-row"><td colspan="9"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Mobile Cards View (100% Width Responsive UX) -->
+        <div class="mobile-cards-view" id="assetsCardsMobile">
+          <div style="text-align:center;padding:30px;"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODALS (Cut Corners & Clean Headers) ==================== -->
+
+<!-- ADD EXPENSE MODAL -->
+<div class="overlay" id="addExpenseModal">
+  <div class="modal clip-lg">
+    <div class="modal-header">
+      <h3 class="modal-title">💰 Add Expense & Auto-Split</h3>
+      <button class="modal-close" onclick="closeModal('addExpenseModal')">✕</button>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Item Name *</label>
+        <input type="text" id="expItem" placeholder="LiPo Battery 6S 5000mAh">
+      </div>
+      <div class="field">
+        <label>Vendor / Store</label>
+        <input type="text" id="expVendor" placeholder="Robokits India">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Quantity *</label>
+        <input type="number" id="expQty" placeholder="2" min="1" value="1">
+      </div>
+      <div class="field">
+        <label>Unit Price ₹ *</label>
+        <input type="number" id="expPrice" placeholder="4200" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="field">
+      <label>Calculated Total</label>
+      <div style="background:var(--paper);border:1px solid var(--line);padding:10px 14px;font-family:var(--mono);color:var(--cr);font-weight:700;font-size:18px;" id="expTotal" class="clip-sm">
+        ₹ 0.00
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Is Purchased?</label>
+        <select id="expPurchased">
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Bill / Invoice (Google Drive)</label>
+        <input type="file" id="expBill" accept="image/*,application/pdf">
+      </div>
+    </div>
+    <div class="field">
+      <label>Additional Notes</label>
+      <textarea id="expNotes" placeholder="Reason for purchase, robot subsystem..."></textarea>
+    </div>
+    <div class="field" style="background:var(--paper);border:1px dashed var(--line);padding:12px;" class="clip-sm">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;text-transform:none;font-size:12.5px;color:var(--ink);font-family:var(--font);">
+        <input type="checkbox" id="expSendEmailAlert" checked style="width:18px;height:18px;accent-color:var(--cr);">
+        <span><strong>Send Personal Due Email</strong> to each owing member with their exact share & UPI handle</span>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary clip-sm" onclick="closeModal('addExpenseModal')">Cancel</button>
+      <button class="btn btn-primary shimmer-btn clip-sm" id="addExpenseBtn" onclick="submitExpense()">Submit & Split</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPLITS INSPECTOR & DUE REMINDERS MODAL -->
+<div class="overlay" id="splitsModal">
+  <div class="modal clip-lg" style="max-width:720px;">
+    <div class="modal-header">
+      <h3 class="modal-title" id="splitsModalTitle">👥 Expense Splits & Due Management</h3>
+      <button class="modal-close" onclick="closeModal('splitsModal')">✕</button>
+    </div>
+    <div id="splitsSummary" style="margin-bottom:16px;"></div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+      <button class="btn btn-sm btn-yellow clip-sm" id="remindAllBtn" onclick="remindAllSplits()">
+        <span>📧 Remind All Unpaid Members</span>
+      </button>
+    </div>
+    <div class="table-wrap clip-sm">
+      <table>
+        <thead>
+          <tr>
+            <th>MEMBER</th><th>SHARE ₹</th><th>STATUS</th><th>PAID TIMESTAMP</th><th>UTR NO</th><th>PROOF</th><th>ACTION</th>
+          </tr>
+        </thead>
+        <tbody id="splitsTableBody">
+          <tr class="loading-row"><td colspan="7"><div class="spinner"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary clip-sm" onclick="closeModal('splitsModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAY TRANSACTION MODAL (FULL DETAILS, UPI DEEP-LINK, DYNAMIC QR, UTR & SCREENSHOT) -->
+<div class="overlay" id="payModal">
+  <div class="modal clip-lg" style="max-width:540px;">
+    <div class="modal-header">
+      <h3 class="modal-title" id="payModalTitle">💳 Pay Due Share (UPI)</h3>
+      <button class="modal-close" onclick="closeModal('payModal')">✕</button>
+    </div>
+
+    <!-- Full Expense Details Card -->
+    <div class="card clip-sm" style="margin-bottom:16px;background:var(--paper);padding:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12.5px;">
+        <div>
+          <div style="color:var(--ink3);font-family:var(--mono);font-size:9.5px;text-transform:uppercase;font-weight:700;">Expense ID</div>
+          <div id="payExpID" style="font-family:var(--mono);color:var(--cr);font-weight:700;font-size:13px;margin-top:2px;">—</div>
+        </div>
+        <div>
+          <div style="color:var(--ink3);font-family:var(--mono);font-size:9.5px;text-transform:uppercase;font-weight:700;">Item Name</div>
+          <div id="payItem" style="font-weight:700;font-family:var(--head);font-size:16px;color:var(--ink);margin-top:2px;">—</div>
+        </div>
+        <div>
+          <div style="color:var(--ink3);font-family:var(--mono);font-size:9.5px;text-transform:uppercase;font-weight:700;">Total Expense</div>
+          <div id="payTotalExp" style="font-family:var(--mono);font-size:13px;color:var(--ink2);margin-top:2px;">—</div>
+        </div>
+        <div>
+          <div style="color:var(--ink3);font-family:var(--mono);font-size:9.5px;text-transform:uppercase;font-weight:700;">Purchase Date</div>
+          <div id="payDate" style="font-family:var(--mono);font-size:12px;color:var(--ink2);margin-top:2px;">—</div>
+        </div>
+        <div>
+          <div style="color:var(--ink3);font-family:var(--mono);font-size:9.5px;text-transform:uppercase;font-weight:700;">Paid By (Submitter)</div>
+          <div id="paySubmitter" style="font-weight:600;font-size:12.5px;color:var(--ink);margin-top:2px;">—</div>
+        </div>
+        <div>
+          <div style="color:var(--ink3);font-family:var(--mono);font-size:9.5px;text-transform:uppercase;font-weight:700;">Payee UPI ID</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+            <span id="payUPI" class="upi-chip" style="font-size:11px;">—</span>
+            <button class="btn btn-sm btn-secondary clip-sm" style="padding:3px 8px;font-size:11px;" onclick="copyUPI()" title="Copy UPI ID">📋 Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Prominent Share Amount Banner -->
+      <div style="margin-top:14px;padding:10px 14px;background:#ffffff;border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;border-radius:4px;" class="clip-sm">
+        <span id="payAmountLabel" style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;">Your Due Share</span>
+        <span id="payAmount" style="font-family:var(--head);font-size:24px;color:var(--green);font-weight:800;">₹ 0.00</span>
+      </div>
+
+      <!-- Batch Items Breakdown (Visible in Batch Pay mode) -->
+      <div id="payBatchItemsBox" style="display:none;margin-top:12px;background:#ffffff;border:1px solid var(--line);padding:10px 12px;border-radius:4px;" class="clip-sm">
+        <div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--cr);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+          <span>📋 ALL INCLUDED SPLIT DUES</span>
+          <span id="payBatchItemsCount" class="badge badge-yellow" style="font-size:9px;">0 Items</span>
+        </div>
+        <div id="payBatchItemsList" style="max-height:130px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;"></div>
+      </div>
+    </div>
+
+    <!-- Dynamic UPI QR Code & Direct Pay Button -->
+    <div class="pay-qr-card clip-sm">
+      <div class="qr-container clip-sm">
+        <img id="payQRCodeImg" src="" alt="UPI QR Code" class="qr-code-img">
+        <div id="payQRPlaceholder" class="qr-placeholder" style="display:none;">
+          <span style="font-size:24px;">📱</span>
+          <div style="font-size:10px;color:var(--ink3);text-align:center;margin-top:4px;">No UPI ID available</div>
+        </div>
+      </div>
+      <div class="qr-info">
+        <div class="qr-info-label" style="font-size:10.5px;font-family:var(--mono);color:var(--cr);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">DYNAMIC UPI QR CODE</div>
+        <div class="qr-info-title" style="font-size:13px;color:var(--ink);margin-top:3px;font-weight:700;">Scan with GPay, PhonePe, Paytm, BHIM</div>
+        <div class="qr-info-sub" style="font-size:11px;color:var(--ink3);margin-top:2px;">Auto-encoded with exact share & receiver</div>
+        <div class="qr-info-action" style="margin-top:10px;">
+          <a id="payUPIAppBtn" href="#" class="btn btn-sm btn-primary clip-sm shimmer-btn" style="font-size:12px;padding:8px 16px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+            <span>📲 Pay via Any UPI App</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Required 12-Digit UTR Number Input -->
+    <div class="field">
+      <label>12-Digit UTR / UPI Ref Number * <span style="color:var(--cr);font-weight:700;">(Required to confirm payment)</span></label>
+      <input type="text" id="payUTR" placeholder="e.g. 428912345678" style="font-family:var(--mono);" maxlength="30" required>
+    </div>
+
+    <!-- Optional Screenshot Upload -->
+    <div class="field">
+      <label>Upload Payment Screenshot <span style="color:var(--ink3);font-size:10px;">(Optional)</span></label>
+      <input type="file" id="payProofFile" accept="image/*,application/pdf" onchange="previewPayProof(this)">
+      <div id="payProofPreview" style="display:none;margin-top:10px;text-align:center;background:var(--paper);padding:8px;" class="clip-sm">
+        <img id="payProofImg" src="" style="max-height:120px;max-width:100%;border:1px solid var(--line);" class="clip-sm">
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary clip-sm" onclick="closeModal('payModal')">Cancel</button>
+      <button class="btn btn-green clip-sm shimmer-btn" id="payBtn" onclick="submitPayment()">Confirm & Submit Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MEDIA MODAL (GOOGLE DRIVE) -->
+<div class="overlay" id="addMediaModal">
+  <div class="modal clip-lg">
+    <div class="modal-header">
+      <h3 class="modal-title">📸 Upload Media to Google Drive</h3>
+      <button class="modal-close" onclick="closeModal('addMediaModal')">✕</button>
+    </div>
+    <div class="field">
+      <label>Description / Caption *</label>
+      <input type="text" id="mediaDesc" placeholder="RoboWar combat bot final chassis assembly">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Media Category</label>
+        <select id="mediaCategory">
+          <option value="ROBOT">Robot Hardware</option>
+          <option value="COMPETITION">Competition & Arena</option>
+          <option value="TESTING">Testing & Trials</option>
+          <option value="TEAM">Team Photo</option>
+          <option value="DESIGN">Schematic / CAD</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Select File (Images, Videos, PDFs) *</label>
+        <input type="file" id="mediaFile" accept="image/*,video/*,application/pdf" onchange="previewSelectedMedia(this)">
+      </div>
+    </div>
+    <!-- Local preview box -->
+    <div id="mediaFilePreview" style="display:none;margin-bottom:14px;background:var(--paper);border:1px solid var(--line);padding:10px;text-align:center;" class="clip-sm">
+      <img id="mediaPreviewImg" style="max-height:160px;max-width:100%;" class="clip-sm">
+      <div id="mediaFileInfo" style="font-size:11px;color:var(--ink3);margin-top:6px;font-family:var(--mono);"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary clip-sm" onclick="closeModal('addMediaModal')">Cancel</button>
+      <button class="btn btn-primary shimmer-btn clip-sm" id="addMediaBtn" onclick="submitMedia()">Upload to Drive</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT EVENT MODAL -->
+<div class="overlay" id="eventModal">
+  <div class="modal clip-lg">
+    <div class="modal-header">
+      <h3 class="modal-title" id="eventModalTitle">🏆 Add Competition Event</h3>
+      <button class="modal-close" onclick="closeModal('eventModal')">✕</button>
+    </div>
+    <input type="hidden" id="editEventID">
+    <div class="field-row">
+      <div class="field">
+        <label>Competition Name *</label>
+        <input type="text" id="evtName" placeholder="Techfest RoboWars 2026">
+      </div>
+      <div class="field">
+        <label>Event Date *</label>
+        <input type="date" id="evtDate">
+      </div>
+    </div>
+    <div class="field">
+      <label>Venue / Location *</label>
+      <input type="text" id="evtVenue" placeholder="IIT Bombay Campus, Mumbai">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Registration URL</label>
+        <input type="url" id="evtRegURL" placeholder="https://techfest.org/robowars">
+      </div>
+      <div class="field">
+        <label>Participation Status *</label>
+        <select id="evtStatus">
+          <option>Registration Open</option>
+          <option>Registration Closed</option>
+          <option>Participated</option>
+          <option>Not Participating</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Event Poster File (Google Drive)</label>
+      <input type="file" id="evtPoster" accept="image/*,application/pdf">
+    </div>
+    <div class="field">
+      <label>Rules & Notes</label>
+      <textarea id="evtNotes" placeholder="Weight limit 60kg, spinning weapon RPM specs..."></textarea>
+    </div>
+    <div class="field" style="background:var(--paper);border:1px dashed var(--line);padding:12px;" class="clip-sm">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0;text-transform:none;font-size:12.5px;color:var(--ink);font-family:var(--font);">
+        <input type="checkbox" id="evtSendEmail" checked style="width:18px;height:18px;accent-color:var(--cr);">
+        <span><strong>Send Event Announcement Email</strong> to all registered team members immediately</span>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary clip-sm" onclick="closeModal('eventModal')">Cancel</button>
+      <button class="btn btn-primary shimmer-btn clip-sm" id="eventSubmitBtn" onclick="submitEvent()">Save Event</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CLUB ASSET MODAL -->
+<div class="overlay" id="addAssetModal">
+  <div class="modal clip-lg">
+    <div class="modal-header">
+      <h3 class="modal-title">🔧 Add Club Asset</h3>
+      <button class="modal-close" onclick="closeModal('addAssetModal')">✕</button>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Asset Name *</label>
+        <input type="text" id="assetName" placeholder="TIG Welder 200A">
+      </div>
+      <div class="field">
+        <label>Quantity *</label>
+        <input type="number" id="assetQty" placeholder="1" min="1" value="1">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Issued To (Select Team Member) *</label>
+        <select id="assetIssuedTo">
+          <option value="">-- Choose Member --</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Issue Date *</label>
+        <input type="date" id="assetIssueDate">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Return Date</label>
+        <input type="date" id="assetReturnDate">
+      </div>
+      <div class="field">
+        <label>Asset Photo / Image</label>
+        <input type="file" id="assetPhotoFile" accept="image/*" onchange="previewAssetPhoto(this)">
+      </div>
+    </div>
+    <div id="assetPhotoPreviewBox" style="display:none;margin-bottom:12px;text-align:center;background:var(--paper);padding:10px;" class="clip-sm">
+      <img id="assetPhotoPreviewImg" style="max-height:140px;max-width:100%;border:1px solid var(--line);" class="clip-sm">
+    </div>
+    <div class="field">
+      <label>Remarks</label>
+      <textarea id="assetRemarks" placeholder="Condition, location in robotics lab..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary clip-sm" onclick="closeModal('addAssetModal')">Cancel</button>
+      <button class="btn btn-primary shimmer-btn clip-sm" id="addAssetBtn" onclick="submitAsset()">Add Asset</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT CLUB ASSET MODAL -->
+<div class="overlay" id="editAssetModal">
+  <div class="modal clip-lg">
+    <div class="modal-header">
+      <h3 class="modal-title">✏️ Edit Club Asset</h3>
+      <button class="modal-close" onclick="closeModal('editAssetModal')">✕</button>
+    </div>
+    <input type="hidden" id="editAssetIdInput">
+    <input type="hidden" id="editAssetExistingImage">
+    <div class="field-row">
+      <div class="field">
+        <label>Asset Name *</label>
+        <input type="text" id="editAssetName">
+      </div>
+      <div class="field">
+        <label>Quantity *</label>
+        <input type="number" id="editAssetQty" min="1">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Issued To (Select Team Member) *</label>
+        <select id="editAssetIssuedTo">
+          <option value="">-- Choose Member --</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Issue Date *</label>
+        <input type="date" id="editAssetIssueDate">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Return Date</label>
+        <input type="date" id="editAssetReturnDate">
+      </div>
+      <div class="field">
+        <label>Replace Photo (Optional)</label>
+        <input type="file" id="editAssetPhotoFile" accept="image/*" onchange="previewEditAssetPhoto(this)">
+      </div>
+    </div>
+    <div id="editAssetPhotoPreviewBox" style="display:none;margin-bottom:12px;text-align:center;background:var(--paper);padding:10px;" class="clip-sm">
+      <img id="editAssetPhotoPreviewImg" style="max-height:140px;max-width:100%;border:1px solid var(--line);" class="clip-sm">
+    </div>
+    <div class="field">
+      <label>Remarks</label>
+      <textarea id="editAssetRemarks"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary clip-sm" onclick="closeModal('editAssetModal')">Cancel</button>
+      <button class="btn btn-primary shimmer-btn clip-sm" id="updateAssetBtn" onclick="submitUpdateAsset()">Update Asset</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM RETURN ASSET MODAL -->
+<div class="overlay" id="confirmReturnModal">
+  <div class="modal clip-lg">
+    <div class="modal-header">
+      <h3 class="modal-title">↩️ Return <span>Club Asset</span></h3>
+      <button class="modal-close" onclick="closeModal('confirmReturnModal')">✕</button>
+    </div>
+    <div style="background:var(--paper);padding:14px;border:1px solid var(--line);margin-bottom:16px;" class="clip-sm">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div id="confirmReturnImgBox" style="width:48px;height:48px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;background:#fff;flex-shrink:0;" class="clip-sm">
+          <span style="font-size:24px;">🔧</span>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--cr);font-weight:700;" id="confirmReturnAssetId">#AST-000</div>
+          <div style="font-family:var(--head);font-size:16px;font-weight:800;color:var(--ink);" id="confirmReturnAssetName">Asset Name</div>
+          <div style="font-size:12px;color:var(--ink2);margin-top:2px;">
+            Issued to: <strong id="confirmReturnIssuedTo" style="color:var(--ink);">—</strong> • Qty: <strong id="confirmReturnQty">1</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Return Date *</label>
+      <input type="date" id="confirmReturnDate">
+    </div>
+    <div class="field">
+      <label>Return Remarks / Condition</label>
+      <input type="text" id="confirmReturnRemarks" placeholder="Returned in good condition to robotics lab rack...">
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary clip-sm" onclick="closeModal('confirmReturnModal')">Cancel</button>
+      <button type="button" class="btn btn-green shimmer-btn clip-sm" id="confirmReturnSubmitBtn" onclick="submitConfirmReturn()">Confirm Return ↵</button>
+    </div>
+  </div>
+</div>
+
+<!-- APPS SCRIPT BACKEND SETUP MODAL -->
+<div class="overlay" id="setupModal">
+  <div class="modal clip-lg" style="max-width:700px;">
+    <div class="modal-header">
+      <h3 class="modal-title">⚙️ Google Apps Script Backend Setup</h3>
+      <button class="modal-close" onclick="closeModal('setupModal')">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--ink2);line-height:1.6;">
+      <p style="margin-bottom:12px;">
+        To connect your Google Sheets and Google Drive with live automated personal due emails and team broadcasts:
+      </p>
+      <div class="field">
+        <label>Apps Script Web App Exec URL</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="apiUrlInput" style="font-family:var(--mono);font-size:12px;">
+          <button class="btn btn-primary btn-sm clip-sm" onclick="saveCustomApiUrl()">Save</button>
+        </div>
+      </div>
+      <div style="margin:16px 0;background:var(--paper);padding:14px;border:1px solid var(--line);" class="clip-sm">
+        <strong style="color:var(--cr);font-family:var(--head);font-size:15px;">Google Apps Script Backend:</strong>
+        <p style="font-size:12px;color:var(--ink3);margin-top:4px;">
+          The full backend script with all email templates, Drive uploads, and sheet handlers is stored in <code>/google-apps-script/Code.gs</code>.
+        </p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary clip-sm" onclick="closeModal('setupModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== IMPRESSIVE & FUNNY ROBOTIC HUD LOADER ==================== -->
+<div id="pageLoader" class="robot-loader-overlay">
+  <div class="robot-loader-card clip-a">
+    <div class="robot-scanner-beam"></div>
+    <div class="robot-mascot-wrap">
+      <svg class="robot-viper-svg" viewBox="0 0 120 120" width="86" height="86">
+        <!-- Rotating Hologram Orbit Rings -->
+        <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0,119,254,0.4)" stroke-width="2" stroke-dasharray="10 6" class="spin-ring-rev"/>
+        <circle cx="60" cy="60" r="43" fill="none" stroke="rgba(0,196,204,0.5)" stroke-width="2" stroke-dasharray="16 10" class="spin-ring"/>
+        <!-- Robot Viper Head Armor (Chamfered Hex) -->
+        <polygon points="60,18 92,38 92,76 60,102 28,76 28,38" fill="#0f172a" stroke="#0077fe" stroke-width="2.5" class="robot-head-glow"/>
+        <polygon points="60,26 84,43 84,71 60,92 36,71 36,43" fill="#1e293b"/>
+        <!-- Robotic Visor with Laser Scanning Line -->
+        <rect x="40" y="48" width="40" height="12" rx="3" fill="#09111e" stroke="#00c4cc" stroke-width="1.2"/>
+        <line x1="42" y1="54" x2="78" y2="54" stroke="#00c4cc" stroke-width="4" stroke-linecap="round" class="visor-laser"/>
+        <!-- Viper Cyan & Violet Chevrons -->
+        <path d="M50 71 L60 78 L70 71" fill="none" stroke="#00c4cc" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M53 80 L60 85 L67 80" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/>
+        <!-- Combat Status LEDs (Cyan, Blue, Violet) -->
+        <circle cx="28" cy="38" r="3.5" fill="#00c4cc"/>
+        <circle cx="92" cy="38" r="3.5" fill="#7c3aed"/>
+        <circle cx="60" cy="18" r="3.5" fill="#0077fe"/>
+      </svg>
+      <div class="loader-pulse-ring"></div>
+    </div>
+    <div class="loader-status-badge">
+      <span class="loader-dot"></span>
+      <span id="loaderTag">VIPER ROBOTICS // SYSTEM BUS</span>
+    </div>
+    <div class="loader-funny-quote" id="loaderQuote">
+      Tightening servo motor bolts and torquing combat gears...
+    </div>
+    <div class="loader-progress-track clip-sm">
+      <div class="loader-progress-fill"></div>
+    </div>
+    <div class="loader-sub-hint" id="loaderHint">STAND CLEAR OF ROBOT ARENA TURRET</div>
+  </div>
+</div>
+
+<script type="module" src="/src/app.js"></script>
+</body>
+</html>
